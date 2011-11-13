@@ -56,16 +56,16 @@ def UUID(value=None):
 class ThreadEntity:
   def __init__(self, key, **attrs):
     self.title = attrs.setdefault('title', None)
-    self.key   = key
+    self.key = key
 
   def __str__(self):
     return "<Thread %s title=%s>" % (self.key, self.title)
 
 class MessageEntity:
   def __init__(self, thread, key, **attrs):
-    self.key        = key and UUID(key) or None
-    self.thread     = Thread(thread)
-    self.title      = attrs.setdefault('title', None)
+    self.key = key and UUID(key) or None
+    self.thread = Thread(thread)
+    self.title = attrs.setdefault('title', None)
     self.created_at = attrs.setdefault('created_at', None)
     self.updated_at = attrs.setdefault('updated_at', None)
 

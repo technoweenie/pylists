@@ -32,8 +32,7 @@ class ThreadClient:
   # Returns nothing.
   def save(self, thread):
     self.th_fam.insert(thread.key, {
-      'title':thread.title
-    })
+      'title': thread.title})
 
   # Builds a new Thread object from a Cassandra result.
   #
@@ -51,7 +50,7 @@ class ThreadClient:
 class MessageClient:
   def __init__(self, pool):
     self.th_msgs_fam = ColumnFamily(pool, 'thread_messages')
-    self.msgs_fam    = ColumnFamily(pool, 'messages')
+    self.msgs_fam = ColumnFamily(pool, 'messages')
 
   # Public: Gets a range of Messages in a Thread.
   #
@@ -60,11 +59,11 @@ class MessageClient:
   # Returns an Array of lists.Message instances.
   def list(self, thread):
     thread = Thread(thread)
-    keys   = self.get_unique_msg_keys(thread)
-    msgs   = []
-    rows   = self.msgs_fam.multiget(keys)
+    keys = self.get_unique_msg_keys(thread)
+    msgs = []
+    rows = self.msgs_fam.multiget(keys)
     for key in rows:
-      id     = UUID(key)
+      id = UUID(key)
       values = rows[key]
       msgs.append(self.load(id, values))
     
@@ -76,7 +75,7 @@ class MessageClient:
   #
   # Returns an entities.Message.
   def get(self, key):
-    id     = UUID(key)
+    id = UUID(key)
     values = self.msgs_fam.get(id.bytes)
     return self.load(id, values)
 
@@ -101,7 +100,7 @@ class MessageClient:
       msg.key = UUID()
 
     msg.updated_at = now
-    columns        = {
+    columns = {
       "thread_key": msg.thread.key, "title": msg.title,
       "created_at": msg.created_at, "updated_at": msg.updated_at,
     }
@@ -164,8 +163,8 @@ class MessageClient:
   # Returns a Tuple of a List of String UUID byte Message keys and a List of
   # indexed Message Tuples.
   def filter_dupes(self, entries):
-    keys     = []
-    dupes    = []
+    keys = []
+    dupes = []
     existing = set()
     for timestamp, id in entries:
       bytes = id.bytes
@@ -178,7 +177,7 @@ class MessageClient:
 
 class Client:
   def __init__(self, keyspace, **kwargs):
-    self.pool     = ConnectionPool(keyspace, **kwargs)
-    self.threads  = ThreadClient(self.pool)
+    self.pool = ConnectionPool(keyspace, **kwargs)
+    self.threads = ThreadClient(self.pool)
     self.messages = MessageClient(self.pool)
 

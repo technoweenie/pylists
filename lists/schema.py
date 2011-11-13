@@ -5,7 +5,7 @@ from pycassa.system_manager import *
 class Schema:
   def __init__(self, keyspace, **kwargs):
     self.keyspace = keyspace
-    self.sys      = SystemManager(**kwargs)
+    self.sys = SystemManager(**kwargs)
 
   def create_keyspace(self):
     try:
@@ -13,7 +13,7 @@ class Schema:
     except pycassa.cassandra.c10.ttypes.InvalidRequestException:
       pass
     self.sys.create_keyspace(self.keyspace,
-        strategy_options={'replication_factor': '1'})
+      strategy_options={'replication_factor': '1'})
 
   def create_column_families(self):
     self.create_threads_cf()
