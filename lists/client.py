@@ -12,15 +12,59 @@ class Client(object):
 
     def __init__(self, keyspace, **kwargs):
         pool = ConnectionPool(keyspace, **kwargs)
+        lst_fam = ColumnFamily(pool, 'lists') 
         th_fam = ColumnFamily(pool, 'threads') 
         th_msgs_fam = ColumnFamily(pool, 'thread_messages')
         msgs_fam = ColumnFamily(pool, 'messages')
 
+        self.lists = ListClient(self, lst_fam)
         self.threads = ThreadClient(self, th_fam, th_msgs_fam)
         self.messages = MessageClient(self, msgs_fam, th_msgs_fam)
 
         for module in ("uuid", "list", "thread", "msg"):
             setattr(self, module, getattr(entities, "_%s" % module))
+
+class ListClient(object):
+
+    def __init__(self, client, lst_fam):
+        self.client = client
+        self.lst_fam = lst_fam
+
+    def get(self, key):
+        """Public: Get a List.
+        
+        key - The String List key.
+        
+        Returns an entities.List.
+        """
+
+        try:
+            return self.load(key, self.lst_fam.get(key))
+        except pycassa.cassandra.c10.ttypes.NotFoundException:
+            pass
+
+    def save(self, lst):
+        """Public: Stores the List in Cassandra.
+        
+        thread - The entities.List to save.
+        
+        Returns nothing.
+        """
+
+        self.lst_fam.insert(lst.key, {
+            'name': lst.name})
+
+    def load(self, key, values):
+        """Builds a new List object from a Cassandra result.
+        
+        key    - The UUID key.
+        values - A Dict of Message attributes.
+                 name - The String title.
+        
+        Returns an entities.List.
+        """
+
+        return self.client.list(key, **values)
 
 class ThreadClient(object):
 
@@ -63,6 +107,7 @@ class ThreadClient(object):
         """
 
         self.th_fam.insert(thread.key, {
+            'list_key': thread.list.key,
             'title': thread.title})
 
     def load(self, key, values):
@@ -70,15 +115,13 @@ class ThreadClient(object):
         
         key    - The UUID key.
         values - A Dict of Message attributes.
-                 title      - The String title.
-                 thread_key - The String Thread key.
-                 created_at - The DateTime creation timestamp.
-                 updated_at - The DateTime modification timestamp.
+                 title    - The String title.
+                 list_key - The String List key.
         
         Returns an entities.Thread.
         """
 
-        return self.client.thread(key, **values)
+        return self.client.thread(values['list_key'], key, **values)
 
     def get_unique_msg_keys(self, thread):
         """Gets the range of Message keys for the given Thread.  Cleanup any multiple

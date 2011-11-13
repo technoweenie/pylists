@@ -11,6 +11,7 @@ a_thread = c.thread(a_list, 'test', title="testing")
 print a_list
 print a_thread
 
+c.lists.save(a_list)
 c.threads.save(a_thread)
 
 a_msg = c.msg(a_thread, title="some message")

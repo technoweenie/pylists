@@ -18,18 +18,25 @@ class Schema(object):
             strategy_options={'replication_factor': '1'})
 
     def create_column_families(self):
+        self.create_lists_cf()
         self.create_threads_cf()
         self.create_msgs_cf()
         self.create_thread_msgs_cf()
+
+    def close(self):
+        self.sys.close()
+
+    def create_lists_cf(self):
+        self.sys.create_column_family(self.keyspace, 'lists',
+            key_validation_class=UTF8_TYPE,
+            comparator_type=UTF8_TYPE)
+        self.alter_columns('lists', name=UTF8_TYPE)
 
     def create_threads_cf(self):
         self.sys.create_column_family(self.keyspace, 'threads',
             key_validation_class=UTF8_TYPE,
             comparator_type=UTF8_TYPE)
-        self.alter_columns('threads', title=UTF8_TYPE)
-
-    def close(self):
-        self.sys.close()
+        self.alter_columns('threads', list_key=UTF8_TYPE, title=UTF8_TYPE)
 
     def create_msgs_cf(self):
         self.sys.create_column_family(self.keyspace, 'messages',

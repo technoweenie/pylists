@@ -1,4 +1,4 @@
-from lists import Schema
+from lists.schema import Schema
 
 # Completely destroys and recreates the sample keyspace for this app.
 
