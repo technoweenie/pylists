@@ -1,6 +1,5 @@
-from lists import Client
+from lists.client import Client
 from time import sleep
-import lists
 
 c = Client("liststest")
 a_thread = c.threads.build('test', title="testing")
