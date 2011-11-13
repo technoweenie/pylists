@@ -14,21 +14,36 @@ class Client(object):
         pool = ConnectionPool(keyspace, **kwargs)
         lst_fam = ColumnFamily(pool, 'lists') 
         th_fam = ColumnFamily(pool, 'threads') 
+        lst_msgs_fam = ColumnFamily(pool, 'list_messages')
         th_msgs_fam = ColumnFamily(pool, 'thread_messages')
         msgs_fam = ColumnFamily(pool, 'messages')
 
-        self.lists = ListClient(self, lst_fam)
+        self.lists = ListClient(self, lst_fam, lst_msgs_fam)
         self.threads = ThreadClient(self, th_fam, th_msgs_fam)
-        self.messages = MessageClient(self, msgs_fam, th_msgs_fam)
+        self.messages = MessageClient(self, msgs_fam,
+            lst_msgs_fam, th_msgs_fam)
 
         for module in ("uuid", "list", "thread", "msg"):
             setattr(self, module, getattr(entities, "_%s" % module))
 
 class ListClient(object):
 
-    def __init__(self, client, lst_fam):
+    def __init__(self, client, lst_fam, lst_msgs_fam):
         self.client = client
         self.lst_fam = lst_fam
+        self.lst_msgs_fam = lst_msgs_fam
+
+    def messages(self, lst):
+        """Public: Gets a range of Messages in a Thread.
+        
+        thread - a lists.Thread instance.
+       
+        Returns an Array of lists.Message instances.
+        """
+
+        lst = self.client.list(lst)
+        keys = get_unique_msg_keys(self.lst_msgs_fam, lst.key)
+        return self.client.messages.multiget(keys)
 
     def get(self, key):
         """Public: Get a List.
@@ -125,9 +140,10 @@ class ThreadClient(object):
 
 class MessageClient(object):
 
-    def __init__(self, client, msgs_fam, th_msgs_fam):
+    def __init__(self, client, msgs_fam, lst_msgs_fam, th_msgs_fam):
         self.client = client 
         self.msgs_fam = msgs_fam
+        self.lst_msgs_fam = lst_msgs_fam
         self.th_msgs_fam = th_msgs_fam
 
     def get(self, key):
@@ -174,6 +190,8 @@ class MessageClient(object):
             "title": msg.title,
             "created_at": msg.created_at, "updated_at": msg.updated_at}
         self.msgs_fam.insert(msg.key.bytes, columns)
+        update_timestamp_index(self.lst_msgs_fam,
+            msg.list.key, msg, old_updated)
         update_timestamp_index(self.th_msgs_fam,
             msg.thread.key, msg, old_updated)
 

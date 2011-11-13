@@ -21,6 +21,7 @@ class Schema(object):
         self.create_lists_cf()
         self.create_threads_cf()
         self.create_msgs_cf()
+        self.create_list_msgs_cf()
         self.create_thread_msgs_cf()
 
     def close(self):
@@ -46,6 +47,12 @@ class Schema(object):
             list_key=UTF8_TYPE, thread_key=UTF8_TYPE,
             title=UTF8_TYPE,
             created_at=DATE_TYPE, updated_at=DATE_TYPE)
+
+    def create_list_msgs_cf(self):
+        self.sys.create_column_family(self.keyspace, 'list_messages',
+            key_validation_class=UTF8_TYPE,
+            comparator_type=CompositeType(
+                DateType(reversed=True),TimeUUIDType()))
 
     def create_thread_msgs_cf(self):
         self.sys.create_column_family(self.keyspace, 'thread_messages',
