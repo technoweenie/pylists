@@ -43,10 +43,9 @@ class Schema(object):
             key_validation_class=TimeUUIDType,
             comparator_type=UTF8_TYPE)
         self.alter_columns('messages',
+            list_key=UTF8_TYPE, thread_key=UTF8_TYPE,
             title=UTF8_TYPE,
-            thread_key=UTF8_TYPE,
-            created_at=DATE_TYPE,
-            updated_at=DATE_TYPE)
+            created_at=DATE_TYPE, updated_at=DATE_TYPE)
 
     def create_thread_msgs_cf(self):
         self.sys.create_column_family(self.keyspace, 'thread_messages',

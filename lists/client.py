@@ -216,7 +216,8 @@ class MessageClient(object):
 
         msg.updated_at = now
         columns = {
-            "thread_key": msg.thread.key, "title": msg.title,
+            "list_key": msg.list.key, "thread_key": msg.thread.key,
+            "title": msg.title,
             "created_at": msg.created_at, "updated_at": msg.updated_at}
         self.msgs_fam.insert(msg.key.bytes, columns)
         self.update_msg_index(msg, old_updated)
@@ -227,6 +228,7 @@ class MessageClient(object):
         key    - The UUID key.
         values - A Dict of Message attributes.
                  title      - The String title.
+                 list_key   - The String List key.
                  thread_key - The String Thread key.
                  created_at - The DateTime creation timestamp.
                  updated_at - The DateTime modification timestamp.
@@ -234,7 +236,8 @@ class MessageClient(object):
         Returns an entities.Thread.
         """
 
-        return self.client.msg(values['thread_key'], key, **values)
+        thread = self.client.thread(values['list_key'], values['thread_key'])
+        return self.client.msg(thread, key, **values)
 
     def update_msg_index(self, msg, old_updated=None):
         """Updates the threads_messages column family, which indexes messages by
