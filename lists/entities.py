@@ -17,11 +17,12 @@ def _thread(key, **attrs):
     else:
         return Thread(key, **attrs)
 
-def _msg(thread, key, **attrs):
+def _msg(*args, **attrs):
     """Initializes a new Message or passes one through.
 
     a_msg    = _msg("thread", "yay", title="Yay")
     same_msg = _msg("thread", a_msg)
+    same_msg = _msg(a_msg)
     new_msg  = _msg("thread", "new", title="New")
 
     thread - Either a String Thread key or a Thread.
@@ -30,10 +31,24 @@ def _msg(thread, key, **attrs):
     Returns a MessageEntity.
     """
 
-    if hasattr(key, 'key'):
-        return key
+    arg_len = len(args)
+    if arg_len == 2:
+        thread, key = args
+        if hasattr(key, 'key'):
+            return key
+        else:
+            return Message(thread, key, **attrs)
+
+    elif arg_len == 1:
+        thread_or_msg = args[0]
+        if hasattr(thread_or_msg, 'thread'):
+            return thread_or_msg
+        else:
+            return Message(thread_or_msg, None, **attrs)
+
     else:
-        return Message(thread, key, **attrs)
+        return Message()
+
 
 def _uuid(value=None):
     """Builds a UUID.
