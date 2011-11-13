@@ -6,7 +6,7 @@ import pycassa, re
 from pycassa.pool import ConnectionPool
 from pycassa.columnfamily import ColumnFamily
 
-from entities import _uuid, _thread, _msg
+import entities
 
 class Client(object):
 
@@ -18,6 +18,9 @@ class Client(object):
 
         self.threads = ThreadClient(self, th_fam, th_msgs_fam)
         self.messages = MessageClient(self, msgs_fam, th_msgs_fam)
+
+        for module in ("uuid", "list", "thread", "msg"):
+            setattr(self, module, getattr(entities, "_%s" % module))
 
 class ThreadClient(object):
 
@@ -34,7 +37,7 @@ class ThreadClient(object):
         Returns an Array of lists.Message instances.
         """
 
-        thread = _thread(thread)
+        thread = self.client.thread(thread)
         keys = self.get_unique_msg_keys(thread)
         return self.client.messages.multiget(keys)
 
@@ -50,14 +53,6 @@ class ThreadClient(object):
             return self.load(key, self.th_fam.get(key))
         except pycassa.cassandra.c10.ttypes.NotFoundException:
             pass
-
-    def build(self, *args, **kwargs):
-        """Public: Builds a new Thread object.  Args are passed to Thread().
-        
-        Returns an entities.Thread.
-        """
-
-        return _thread(*args, **kwargs)
 
     def save(self, thread):
         """Public: Stores the Thread in Cassandra.
@@ -83,7 +78,7 @@ class ThreadClient(object):
         Returns an entities.Thread.
         """
 
-        return self.build(key, **values)
+        return self.client.thread(key, **values)
 
     def get_unique_msg_keys(self, thread):
         """Gets the range of Message keys for the given Thread.  Cleanup any multiple
@@ -146,7 +141,7 @@ class MessageClient(object):
         Returns an entities.Message.
         """
 
-        id = _uuid(key)
+        id = self.client.uuid(key)
         values = self.msgs_fam.get(id.bytes)
         return self.load(id, values)
 
@@ -154,19 +149,11 @@ class MessageClient(object):
         msgs = []
         rows = self.msgs_fam.multiget(keys)
         for key in rows:
-            id = _uuid(key)
+            id = self.client.uuid(key)
             values = rows[key]
             msgs.append(self.load(id, values))
 
         return msgs
-
-    def build(self, *args, **kwargs):
-        """Public: Builds a new Message object.  Args are passed to Message().
-        
-        Returns an entities.Message.
-        """
-
-        return _msg(*args, **kwargs)
 
     def save(self, msg):
         """Public: Stores the Message in Cassandra and updates any indexes.
@@ -182,7 +169,7 @@ class MessageClient(object):
             old_updated = msg.updated_at
         else:
             msg.created_at = now
-            msg.key = _uuid()
+            msg.key = self.client.uuid()
 
         msg.updated_at = now
         columns = {
@@ -204,7 +191,7 @@ class MessageClient(object):
         Returns an entities.Thread.
         """
 
-        return self.build(values['thread_key'], key, **values)
+        return self.client.msg(values['thread_key'], key, **values)
 
     def update_msg_index(self, msg, old_updated=None):
         """Updates the threads_messages column family, which indexes messages by

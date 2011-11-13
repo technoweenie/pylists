@@ -122,6 +122,9 @@ class List(object):
         self.name = attrs.setdefault('name', None)
         self.key = key
 
+    def __str__(self):
+        return "<List %s name=%s>" % (self.key, self.name)
+
 class Thread(object):
 
     def __init__(self, lst, key, **attrs):
@@ -130,7 +133,8 @@ class Thread(object):
         self.key = key
 
     def __str__(self):
-        return "<Thread %s title=%s>" % (self.key, self.title)
+        return "<Thread %s/%s title=%s>" % (
+            self.list.key, self.key, self.title)
 
 class Message(object):
 

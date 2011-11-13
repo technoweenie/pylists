@@ -5,11 +5,15 @@ from time import sleep
 # messages in that Thread.
 
 c = Client("liststest")
-a_thread = c.threads.build('test', title="testing")
+a_list = c.list("foo@bar.com", name="Foo")
+a_thread = c.thread(a_list, 'test', title="testing")
+
+print a_list
 print a_thread
+
 c.threads.save(a_thread)
 
-a_msg = c.messages.build(a_thread, None, title="some message")
+a_msg = c.msg(a_thread, title="some message")
 
 c.messages.save(a_msg)
 
