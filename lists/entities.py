@@ -1,35 +1,39 @@
 import uuid
 
-# Initializes a new ThreadEntity or passes one through.
-#
-#   a_thread    = Thread("yay", title="Yay")
-#   same_thread = Thread(a_thread)
-#   new_thread  = Thread("new", title="New")
-#
-# key - Either a String Thread key or a ThreadEntity.
-#
-# Returns a ThreadEntity.
-def Thread(key, **attrs):
-  if hasattr(key, 'key'):
-    return key
-  else:
-    return ThreadEntity(key, **attrs)
+def _thread(key, **attrs):
+  """Initializes a new Threador passes one through.
 
-# Initializes a new MessageEntity or passes one through.
-#
-#   a_msg    = Message("thread", "yay", title="Yay")
-#   same_msg = Message("thread", a_thread)
-#   new_msg  = Message("thread", "new", title="New")
-#
-# thread - Either a String Thread key or a ThreadIdentity
-# key    - Either a UUID or String Message key or a MessageEntity.
-#
-# Returns a MessageEntity.
-def Message(thread, key, **attrs):
+    a_thread    = _thread("yay", title="Yay")
+    same_thread = _thread(a_thread)
+    new_thread  = _thread("new", title="New")
+
+  key - Either a String Thread key or a Thread.
+
+  Returns a Thread.
+  """
+
   if hasattr(key, 'key'):
     return key
   else:
-    return MessageEntity(thread, key, **attrs)
+    return Thread(key, **attrs)
+
+def _msg(thread, key, **attrs):
+  """Initializes a new Messageor passes one through.
+
+    a_msg    = _msg("thread", "yay", title="Yay")
+    same_msg = _msg("thread", a_thread)
+    new_msg  = _msg("thread", "new", title="New")
+
+  thread - Either a String Thread key or a Thread.
+  key    - Either a UUID or String Message key or a Message.
+
+  Returns a MessageEntity.
+  """
+
+  if hasattr(key, 'key'):
+    return key
+  else:
+    return Message(thread, key, **attrs)
 
 # Builds a UUID.
 #
@@ -41,7 +45,7 @@ def Message(thread, key, **attrs):
 # value - Optional UUID or String representation of a UUID.
 #
 # Returns a uuid.UUID.
-def UUID(value=None):
+def _uuid(value=None):
   if hasattr(value, 'bytes'):
     return value
   elif value:
@@ -53,7 +57,8 @@ def UUID(value=None):
   else:
     return uuid.uuid1()
 
-class ThreadEntity:
+class Thread:
+
   def __init__(self, key, **attrs):
     self.title = attrs.setdefault('title', None)
     self.key = key
@@ -61,10 +66,11 @@ class ThreadEntity:
   def __str__(self):
     return "<Thread %s title=%s>" % (self.key, self.title)
 
-class MessageEntity:
+class Message:
+
   def __init__(self, thread, key, **attrs):
-    self.key = key and UUID(key) or None
-    self.thread = Thread(thread)
+    self.key = key and _uuid(key) or None
+    self.thread = _thread(thread)
     self.title = attrs.setdefault('title', None)
     self.created_at = attrs.setdefault('created_at', None)
     self.updated_at = attrs.setdefault('updated_at', None)

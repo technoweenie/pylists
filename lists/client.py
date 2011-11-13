@@ -1,8 +1,12 @@
+import re
+import uuid
+from datetime import datetime
+
 import pycassa, re
-from entities             import UUID, Thread, Message
-from pycassa.pool         import ConnectionPool
+from pycassa.pool import ConnectionPool
 from pycassa.columnfamily import ColumnFamily
-from datetime             import datetime
+
+from entities import _uuid, _thread, _msg
 
 class ThreadClient:
   def __init__(self, pool):
@@ -23,7 +27,7 @@ class ThreadClient:
   #
   # Returns an entities.Thread.
   def build(self, *args, **kwargs):
-    return Thread(*args, **kwargs)
+    return _thread(*args, **kwargs)
 
   # Public: Stores the Thread in Cassandra.
   #
@@ -58,12 +62,12 @@ class MessageClient:
   #
   # Returns an Array of lists.Message instances.
   def list(self, thread):
-    thread = Thread(thread)
+    thread = _thread(thread)
     keys = self.get_unique_msg_keys(thread)
     msgs = []
     rows = self.msgs_fam.multiget(keys)
     for key in rows:
-      id = UUID(key)
+      id = _uuid(key)
       values = rows[key]
       msgs.append(self.load(id, values))
     
@@ -75,7 +79,7 @@ class MessageClient:
   #
   # Returns an entities.Message.
   def get(self, key):
-    id = UUID(key)
+    id = _uuid(key)
     values = self.msgs_fam.get(id.bytes)
     return self.load(id, values)
 
@@ -83,7 +87,7 @@ class MessageClient:
   #
   # Returns an entities.Message.
   def build(self, *args, **kwargs):
-    return Message(*args, **kwargs)
+    return _msg(*args, **kwargs)
 
   # Public: Stores the Message in Cassandra and updates any indexes.
   #
@@ -97,7 +101,7 @@ class MessageClient:
       old_updated = msg.updated_at
     else:
       msg.created_at = now
-      msg.key = UUID()
+      msg.key = _uuid()
 
     msg.updated_at = now
     columns = {
