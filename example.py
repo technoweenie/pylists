@@ -1,6 +1,9 @@
 from lists.client import Client
 from time import sleep
 
+# Just a simple test that creates a Thread, a new Message, and lists all
+# messages in that Thread.
+
 c = Client("liststest")
 a_thread = c.threads.build('test', title="testing")
 print a_thread
