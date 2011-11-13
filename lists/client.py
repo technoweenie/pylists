@@ -186,9 +186,8 @@ class MessageClient(object):
 
         msg.updated_at = now
         columns = {
-        "thread_key": msg.thread.key, "title": msg.title,
-        "created_at": msg.created_at, "updated_at": msg.updated_at,
-        }
+            "thread_key": msg.thread.key, "title": msg.title,
+            "created_at": msg.created_at, "updated_at": msg.updated_at}
         self.msgs_fam.insert(msg.key.bytes, columns)
         self.update_msg_index(msg, old_updated)
 
