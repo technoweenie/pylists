@@ -28,3 +28,13 @@ def test_message():
 
     new_msg = entities._msg("yay", entities._uuid())
     assert_not_equal(a_msg, new_msg)
+
+def test_uuid():
+    uuid = entities._uuid()
+    assert_equal(16, len(uuid.bytes))
+    assert_equal(36, len(str(uuid)))
+
+    assert_equal(uuid, entities._uuid(uuid))
+    assert_equal(uuid, entities._uuid(uuid.bytes))
+    assert_equal(uuid, entities._uuid(str(uuid)))
+
