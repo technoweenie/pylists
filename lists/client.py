@@ -82,7 +82,7 @@ class ThreadClient(object):
         """
 
         thread = self.client.thread(thread)
-        keys = self.get_unique_msg_keys(thread)
+        keys = get_unique_msg_keys(self.th_msgs_fam, thread.key)
         return self.client.messages.multiget(keys)
 
     def get(self, key):
@@ -122,52 +122,6 @@ class ThreadClient(object):
         """
 
         return self.client.thread(values['list_key'], key, **values)
-
-    def get_unique_msg_keys(self, thread):
-        """Gets the range of Message keys for the given Thread.  Cleanup any multiple
-        Message IDs with old timestamps.
-        
-        thread - The entities.Thread to query by.
-        
-        Returns a List of String Message keys.
-        """
-
-        entries = self.th_msgs_fam.get(thread.key, column_count=50)
-        keys, dupes = self.filter_dupes(entries)
-
-        if len(dupes) > 0:
-            self.th_msgs_fam.remove(thread.key, dupes)
-
-        return keys
-
-    def filter_dupes(self, entries):
-        """Partitions the list of entries into two lists: one containing uniques, and
-        one containing the duplicates.
-        
-          entries = [(datetime(...), UUID()), (datetime(...), UUID())]
-          keys, dupes = filter_dupes(entries)
-          keys  # => [UUID().bytes, UUID().bytes]
-          dupes # => [(datetime(...), UUID()), (datetime(...), UUID())]
-        
-        entries - A List of indexed Messages represented as Tuples, each containing
-                  a DateTime timestmap and a UUID Message key.
-        
-        Returns a Tuple of a List of String UUID byte Message keys and a List of
-        indexed Message Tuples.
-        """
-
-        keys = []
-        dupes = []
-        existing = set()
-        for timestamp, id in entries:
-            bytes = id.bytes
-            if bytes in existing:
-                dupes.append((timestamp, id))
-            else:
-                existing.add(bytes)
-                keys.append(bytes)
-
-        return (keys, dupes)
 
 class MessageClient(object):
 
@@ -220,7 +174,8 @@ class MessageClient(object):
             "title": msg.title,
             "created_at": msg.created_at, "updated_at": msg.updated_at}
         self.msgs_fam.insert(msg.key.bytes, columns)
-        self.update_msg_index(msg, old_updated)
+        update_timestamp_index(self.th_msgs_fam,
+            msg.thread.key, msg, old_updated)
 
     def load(self, key, values):
         """Builds a new Thread object from a Cassandra result.
@@ -239,19 +194,68 @@ class MessageClient(object):
         thread = self.client.thread(values['list_key'], values['thread_key'])
         return self.client.msg(thread, key, **values)
 
-    def update_msg_index(self, msg, old_updated=None):
-        """Updates the threads_messages column family, which indexes messages by
-        their `updated_at` timestamp.  If the Message is being updated, pass
-        the old `updated_at` value for `old_updated` so it can be cleaned up.
-        
-        msg         - The entities.Message that is being reindexed.
-        old_updated - Optional DateTime of the Message's `updated_at` before the
-                      update.
-        
-        Returns nothing.
-        """
+def update_timestamp_index(column_fam, key, msg, old_updated=None):
+    """Updates the a column family used strictly for indexing by timestamp.
+    If the Message is being updated, pass the old `updated_at` value for 
+    `old_updated` so it can be cleaned up.
+    
+    column_fam  - The ColumnFamily that is being updated.
+    key         - The String row key.
+    msg         - The entities.Message that is being reindexed.
+    old_updated - Optional DateTime of the Message's `updated_at` before the
+                  update.
+    
+    Returns nothing.
+    """
 
-        self.th_msgs_fam.insert(msg.thread.key, {(msg.updated_at, msg.key): ''})
-        if old_updated:
-            self.th_msgs_fam.remove(msg.thread.key, [(old_updated, msg.key)])
+    column_fam.insert(key, {(msg.updated_at, msg.key): ''})
+    if old_updated:
+        column_fam.remove(key, [(old_updated, msg.key)])
+
+def get_unique_msg_keys(column_fam, key):
+    """Gets the range of Message keys for the given Thread.  Cleanup any multiple
+    Message IDs with old timestamps.
+    
+    column_fam - The ColumnFamily that is being queried.
+    key        - The String row key.
+    
+    Returns a List of String Message keys.
+    """
+
+    entries = column_fam.get(key, column_count=50)
+    keys, dupes = filter_dupes(entries)
+
+    if len(dupes) > 0:
+        column_fam.remove(key, dupes)
+
+    return keys
+
+def filter_dupes(entries):
+    """Partitions the list of entries into two lists: one containing uniques, and
+    one containing the duplicates.
+    
+      entries = [(datetime(...), UUID()), (datetime(...), UUID())]
+      keys, dupes = filter_dupes(entries)
+      keys  # => [UUID().bytes, UUID().bytes]
+      dupes # => [(datetime(...), UUID()), (datetime(...), UUID())]
+    
+    entries - A List of indexed Messages represented as Tuples, each containing
+              a DateTime timestmap and a UUID Message key.
+    
+    Returns a Tuple of a List of String UUID byte Message keys and a List of
+    indexed Message Tuples.
+    """
+
+    keys = []
+    dupes = []
+    existing = set()
+    for timestamp, id in entries:
+        bytes = id.bytes
+        if bytes in existing:
+            dupes.append((timestamp, id))
+        else:
+            existing.add(bytes)
+            keys.append(bytes)
+
+    return (keys, dupes)
 
