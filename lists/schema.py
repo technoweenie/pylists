@@ -2,7 +2,7 @@ import pycassa
 from pycassa.types import *
 from pycassa.system_manager import *
 
-class Schema:
+class Schema(object):
   def __init__(self, keyspace, **kwargs):
     self.keyspace = keyspace
     self.sys = SystemManager(**kwargs)

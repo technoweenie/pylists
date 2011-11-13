@@ -8,7 +8,7 @@ from pycassa.columnfamily import ColumnFamily
 
 from entities import _uuid, _thread, _msg
 
-class ThreadClient:
+class ThreadClient(object):
   def __init__(self, pool):
     self.th_fam = ColumnFamily(pool, 'threads') 
 
@@ -51,7 +51,7 @@ class ThreadClient:
   def load(self, key, values):
     return self.build(key, **values)
 
-class MessageClient:
+class MessageClient(object):
   def __init__(self, pool):
     self.th_msgs_fam = ColumnFamily(pool, 'thread_messages')
     self.msgs_fam = ColumnFamily(pool, 'messages')
@@ -179,7 +179,7 @@ class MessageClient:
         keys.append(bytes)
     return (keys, dupes)
 
-class Client:
+class Client(object):
   def __init__(self, keyspace, **kwargs):
     self.pool = ConnectionPool(keyspace, **kwargs)
     self.threads = ThreadClient(self.pool)

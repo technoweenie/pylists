@@ -57,7 +57,7 @@ def _uuid(value=None):
   else:
     return uuid.uuid1()
 
-class Thread:
+class Thread(object):
 
   def __init__(self, key, **attrs):
     self.title = attrs.setdefault('title', None)
@@ -66,7 +66,7 @@ class Thread:
   def __str__(self):
     return "<Thread %s title=%s>" % (self.key, self.title)
 
-class Message:
+class Message(object):
 
   def __init__(self, thread, key, **attrs):
     self.key = key and _uuid(key) or None
