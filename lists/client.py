@@ -9,8 +9,20 @@ from pycassa.columnfamily import ColumnFamily
 from entities import _uuid, _thread, _msg
 
 class ThreadClient(object):
-  def __init__(self, pool):
-    self.th_fam = ColumnFamily(pool, 'threads') 
+  def __init__(self, client, th_fam, th_msgs_fam):
+    self.client = client 
+    self.th_fam = th_fam
+    self.th_msgs_fam = th_msgs_fam
+
+  # Public: Gets a range of Messages in a Thread.
+  #
+  # thread - a lists.Thread instance.
+  #
+  # Returns an Array of lists.Message instances.
+  def messages(self, thread):
+    thread = _thread(thread)
+    keys = self.get_unique_msg_keys(thread)
+    return self.client.messages.multiget(keys)
 
   # Public: Get a Thread.
   #
@@ -51,27 +63,52 @@ class ThreadClient(object):
   def load(self, key, values):
     return self.build(key, **values)
 
-class MessageClient(object):
-  def __init__(self, pool):
-    self.th_msgs_fam = ColumnFamily(pool, 'thread_messages')
-    self.msgs_fam = ColumnFamily(pool, 'messages')
+  # Gets the range of Message keys for the given Thread.  Cleanup any multiple
+  # Message IDs with old timestamps.
+  #
+  # thread - The entities.Thread to query by.
+  #
+  # Returns a List of String Message keys.
+  def get_unique_msg_keys(self, thread):
+    entries = self.th_msgs_fam.get(thread.key, column_count=50)
+    keys, dupes = self.filter_dupes(entries)
 
-  # Public: Gets a range of Messages in a Thread.
+    if len(dupes) > 0:
+      self.th_msgs_fam.remove(thread.key, dupes)
+
+    return keys
+
+  # Partitions the list of entries into two lists: one containing uniques, and
+  # one containing the duplicates.
   #
-  # thread - a lists.Thread instance.
+  #   entries = [(datetime(...), UUID()), (datetime(...), UUID())]
+  #   keys, dupes = filter_dupes(entries)
+  #   keys  # => [UUID().bytes, UUID().bytes]
+  #   dupes # => [(datetime(...), UUID()), (datetime(...), UUID())]
   #
-  # Returns an Array of lists.Message instances.
-  def list(self, thread):
-    thread = _thread(thread)
-    keys = self.get_unique_msg_keys(thread)
-    msgs = []
-    rows = self.msgs_fam.multiget(keys)
-    for key in rows:
-      id = _uuid(key)
-      values = rows[key]
-      msgs.append(self.load(id, values))
-    
-    return msgs
+  # entries - A List of indexed Messages represented as Tuples, each containing
+  #           a DateTime timestmap and a UUID Message key.
+  #
+  # Returns a Tuple of a List of String UUID byte Message keys and a List of
+  # indexed Message Tuples.
+  def filter_dupes(self, entries):
+    keys = []
+    dupes = []
+    existing = set()
+    for timestamp, id in entries:
+      bytes = id.bytes
+      if bytes in existing:
+        dupes.append((timestamp, id))
+      else:
+        existing.add(bytes)
+        keys.append(bytes)
+    return (keys, dupes)
+
+class MessageClient(object):
+  def __init__(self, client, msgs_fam, th_msgs_fam):
+    self.client = client 
+    self.msgs_fam = msgs_fam
+    self.th_msgs_fam = th_msgs_fam
 
   # Public: Gets a single Message.
   #
@@ -82,6 +119,16 @@ class MessageClient(object):
     id = _uuid(key)
     values = self.msgs_fam.get(id.bytes)
     return self.load(id, values)
+
+  def multiget(self, keys):
+    msgs = []
+    rows = self.msgs_fam.multiget(keys)
+    for key in rows:
+      id = _uuid(key)
+      values = rows[key]
+      msgs.append(self.load(id, values))
+    
+    return msgs
 
   # Public: Builds a new Message object.  Args are passed to Message().
   #
@@ -138,50 +185,13 @@ class MessageClient(object):
     if old_updated:
       self.th_msgs_fam.remove(msg.thread.key, [(old_updated, msg.key)])
 
-  # Gets the range of Message keys for the given Thread.  Cleanup any multiple
-  # Message IDs with old timestamps.
-  #
-  # thread - The entities.Thread to query by.
-  #
-  # Returns a List of String Message keys.
-  def get_unique_msg_keys(self, thread):
-    entries = self.th_msgs_fam.get(thread.key, column_count=50)
-    keys, dupes = self.filter_dupes(entries)
-
-    if len(dupes) > 0:
-      self.th_msgs_fam.remove(thread.key, dupes)
-
-    return keys
-
-  # Partitions the list of entries into two lists: one containing uniques, and
-  # one containing the duplicates.
-  #
-  #   entries = [(datetime(...), UUID()), (datetime(...), UUID())]
-  #   keys, dupes = filter_dupes(entries)
-  #   keys  # => [UUID().bytes, UUID().bytes]
-  #   dupes # => [(datetime(...), UUID()), (datetime(...), UUID())]
-  #
-  # entries - A List of indexed Messages represented as Tuples, each containing
-  #           a DateTime timestmap and a UUID Message key.
-  #
-  # Returns a Tuple of a List of String UUID byte Message keys and a List of
-  # indexed Message Tuples.
-  def filter_dupes(self, entries):
-    keys = []
-    dupes = []
-    existing = set()
-    for timestamp, id in entries:
-      bytes = id.bytes
-      if bytes in existing:
-        dupes.append((timestamp, id))
-      else:
-        existing.add(bytes)
-        keys.append(bytes)
-    return (keys, dupes)
-
 class Client(object):
   def __init__(self, keyspace, **kwargs):
-    self.pool = ConnectionPool(keyspace, **kwargs)
-    self.threads = ThreadClient(self.pool)
-    self.messages = MessageClient(self.pool)
+    pool = ConnectionPool(keyspace, **kwargs)
+    th_fam = ColumnFamily(pool, 'threads') 
+    th_msgs_fam = ColumnFamily(pool, 'thread_messages')
+    msgs_fam = ColumnFamily(pool, 'messages')
+
+    self.threads = ThreadClient(self, th_fam, th_msgs_fam)
+    self.messages = MessageClient(self, msgs_fam, th_msgs_fam)
 

@@ -16,6 +16,6 @@ sleep(1)
 a_msg.title = "some message!"
 c.messages.save(a_msg)
 
-for msg in c.messages.list(a_thread):
+for msg in c.threads.messages(a_thread):
   print msg
 
