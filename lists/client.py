@@ -96,6 +96,16 @@ class ListClient(object):
         return self.client.list(key, **values)
 
     def update_timestamp_index(self, msg, old_updated):
+        """Updates the List related timestamp indexes after a message has
+        been updated.
+
+        msg         - An entities.Message.
+        old_updated - Optional DateTime of the entity's `updated_at` before the
+                      update.
+
+        Returns nothing.
+        """
+
         update_timestamp_index(self.lst_msgs_fam,
             msg.list.key, msg, old_updated)
         update_timestamp_index(self.lst_threads_fam,
@@ -172,6 +182,16 @@ class ThreadClient(object):
         return self.client.thread(values['list_key'], key, **values)
 
     def update_timestamp_index(self, msg, old_updated):
+        """Updates the Thread related timestamp indexes after a message has
+        been updated.
+
+        msg         - An entities.Message.
+        old_updated - Optional DateTime of the entity's `updated_at` before the
+                      update.
+
+        Returns nothing.
+        """
+
         update_timestamp_index(self.th_msgs_fam,
             msg.thread.key, msg, old_updated)
 
@@ -206,7 +226,7 @@ class MessageClient(object):
         Returns a List of entities.Message instances.
         """
 
-        return multiget(self, self.msgs_fam, keys, self.client.uuid)
+        return multiget(self, self.msgs_fam, keys)
 
     def save(self, msg):
         """Public: Stores the Message in Cassandra and updates any indexes.
@@ -247,16 +267,24 @@ class MessageClient(object):
         Returns an entities.Thread.
         """
 
+        key = self.client.uuid(key)
         thread = self.client.thread(values['list_key'], values['thread_key'])
         return self.client.msg(thread, key, **values)
 
-def multiget(client, column_fam, keys, id_func=str):
+def multiget(client, column_fam, keys):
+    """Handles a multiget against a column familiy.
+
+    client  - The *Client instance.
+    keys    - A List of String row keys.
+
+    Returns a List of entities.
+    """
+
     msgs = []
     rows = column_fam.multiget(keys)
     for key in rows:
-        id = id_func(key)
         values = rows[key]
-        msgs.append(client.load(id, values))
+        msgs.append(client.load(key, values))
 
     return msgs
 
@@ -266,11 +294,12 @@ def update_timestamp_index(column_fam, key, entity, old_updated=None,
     If the Message is being updated, pass the old `updated_at` value for 
     `old_updated` so it can be cleaned up.
     
-    column_fam  - The ColumnFamily that is being updated.
-    key         - The String row key.
-    entity      - An entities.* instance.
-    old_updated - Optional DateTime of the Message's `updated_at` before the
-                  update.
+    column_fam   - The ColumnFamily that is being updated.
+    key          - The String row key.
+    entity       - An entities.* instance.
+    old_updated  - Optional DateTime of the entity's `updated_at` before the
+                   update.
+    updated_attr - The String timestamp column name.  Default: "updated_at".
     
     Returns nothing.
     """
@@ -298,7 +327,7 @@ def get_unique_msg_keys(column_fam, key, filter_comparator=None):
 
     return keys
 
-def filter_dupes(entries, id_comparator=None):
+def filter_dupes(entries, id_comparator = None):
     """Partitions the list of entries into two lists: one containing uniques, and
     one containing the duplicates.
     
@@ -320,13 +349,12 @@ def filter_dupes(entries, id_comparator=None):
     keys = []
     dupes = []
     existing = set()
-    for timestamp, key in entries:
-        id = id_comparator(key)
+    for timestamp, id in entries:
         if id in existing:
-            dupes.append((timestamp, key))
+            dupes.append((timestamp, id))
         else:
             existing.add(id)
-            keys.append(id)
+            keys.append(id_comparator(id))
 
     return (keys, dupes)
 

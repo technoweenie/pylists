@@ -9,12 +9,6 @@ from time import sleep
 c = Client("liststest")
 a_list = c.list("foo@bar.com", name="Foo")
 
-if c.threads.get("existing") == None:
-    existing = c.thread(a_list, 'existing', title="Existing")
-    existing.message_updated_at = datetime(2010, 1, 1)
-    c.threads.save(existing)
-    c.messages.save(c.msg(existing, title="Existing Message"))
-
 a_thread = c.thread(a_list, 'test', title="testing")
 
 print a_list
@@ -27,6 +21,12 @@ c.threads.save(a_thread)
 a_msg = c.msg(a_thread, title="some message")
 
 c.messages.save(a_msg)
+
+if c.threads.get("existing") == None:
+    existing = c.thread(a_list, 'existing', title="Existing")
+    existing.message_updated_at = datetime(2010, 1, 1)
+    c.threads.save(existing)
+    c.messages.save(c.msg(existing, title="Existing Message"))
 
 print "messages for the list"
 for msg in c.lists.messages(a_list):
