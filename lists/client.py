@@ -31,7 +31,7 @@ class ListClient(object):
 
     def __init__(self, client, lst_fam, lst_threads_fam, lst_msgs_fam):
         self.client = client
-        self.lst_fam = lst_fam
+        self.column_fam = lst_fam
         self.lst_threads_fam = lst_threads_fam
         self.lst_msgs_fam = lst_msgs_fam
 
@@ -68,7 +68,7 @@ class ListClient(object):
         """
 
         try:
-            return self.load(key, self.lst_fam.get(key))
+            return self.load(key, self.column_fam.get(key))
         except pycassa.cassandra.c10.ttypes.NotFoundException:
             pass
 
@@ -80,7 +80,7 @@ class ListClient(object):
         Returns nothing.
         """
 
-        self.lst_fam.insert(lst.key, {
+        self.column_fam.insert(lst.key, {
             'name': lst.name})
 
     def load(self, key, values):
@@ -115,7 +115,7 @@ class ThreadClient(object):
 
     def __init__(self, client, th_fam, lst_threads_fam, th_msgs_fam):
         self.client = client 
-        self.th_fam = th_fam
+        self.column_fam = th_fam
         self.lst_threads_fam = lst_threads_fam
         self.th_msgs_fam = th_msgs_fam
 
@@ -140,7 +140,7 @@ class ThreadClient(object):
         """
 
         try:
-            return self.load(key, self.th_fam.get(key))
+            return self.load(key, self.column_fam.get(key))
         except pycassa.cassandra.c10.ttypes.NotFoundException:
             pass
 
@@ -152,7 +152,7 @@ class ThreadClient(object):
         Returns a List of entities.Message instances.
         """
 
-        return multiget(self, self.th_fam, keys)
+        return multiget(self, keys)
 
     def save(self, thread):
         """Public: Stores the Thread in Cassandra.
@@ -166,7 +166,7 @@ class ThreadClient(object):
             'title': thread.title}
         if thread.message_updated_at:
             values['message_updated_at'] = thread.message_updated_at
-        self.th_fam.insert(thread.key, values)
+        self.column_fam.insert(thread.key, values)
 
     def load(self, key, values):
         """Builds a new Thread object from a Cassandra result.
@@ -196,7 +196,7 @@ class ThreadClient(object):
             msg.thread.key, msg, old_updated)
 
         now = msg.thread.message_updated_at = datetime.utcnow()
-        self.th_fam.insert(msg.thread.key, {"message_updated_at": now})
+        self.column_fam.insert(msg.thread.key, {"message_updated_at": now})
 
         self.client.lists.update_timestamp_index(msg, old_updated)
 
@@ -204,7 +204,7 @@ class MessageClient(object):
 
     def __init__(self, client, msgs_fam):
         self.client = client 
-        self.msgs_fam = msgs_fam
+        self.column_fam = msgs_fam
 
     def get(self, key):
         """Public: Gets a single Message.
@@ -215,7 +215,7 @@ class MessageClient(object):
         """
 
         id = self.client.uuid(key)
-        values = self.msgs_fam.get(id.bytes)
+        values = self.column_fam.get(id.bytes)
         return self.load(id, values)
 
     def multiget(self, keys):
@@ -226,7 +226,7 @@ class MessageClient(object):
         Returns a List of entities.Message instances.
         """
 
-        return multiget(self, self.msgs_fam, keys)
+        return multiget(self, keys)
 
     def save(self, msg):
         """Public: Stores the Message in Cassandra and updates any indexes.
@@ -249,7 +249,7 @@ class MessageClient(object):
             "list_key": msg.list.key, "thread_key": msg.thread.key,
             "title": msg.title,
             "created_at": msg.created_at, "updated_at": msg.updated_at}
-        self.msgs_fam.insert(msg.key.bytes, columns)
+        self.column_fam.insert(msg.key.bytes, columns)
 
         self.client.threads.update_timestamp_index(msg, old_updated)
 
@@ -271,7 +271,7 @@ class MessageClient(object):
         thread = self.client.thread(values['list_key'], values['thread_key'])
         return self.client.msg(thread, key, **values)
 
-def multiget(client, column_fam, keys):
+def multiget(client, keys):
     """Handles a multiget against a column familiy.
 
     client  - The *Client instance.
@@ -281,7 +281,7 @@ def multiget(client, column_fam, keys):
     """
 
     msgs = []
-    rows = column_fam.multiget(keys)
+    rows = client.column_fam.multiget(keys)
     for key in rows:
         values = rows[key]
         msgs.append(client.load(key, values))
