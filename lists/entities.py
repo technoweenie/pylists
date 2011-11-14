@@ -117,34 +117,38 @@ def _uuid(value=None):
         return uuid.uuid1()
 
 class List(object):
+    attributes = ('name',)
 
     def __init__(self, key, **attrs):
-        self.name = attrs.setdefault('name', None)
         self.key = key
+        for key in self.__class__.attributes:
+            setattr(self, key, attrs.setdefault(key, None))
 
     def __str__(self):
         return "<List %s name=%s>" % (self.key, self.name)
 
 class Thread(object):
+    attributes = ('title', 'message_updated_at')
 
     def __init__(self, lst, key, **attrs):
-        self.list = _list(lst)
-        self.title = attrs.setdefault('title', None)
         self.key = key
+        self.list = _list(lst)
+        for key in self.__class__.attributes:
+            setattr(self, key, attrs.setdefault(key, None))
 
     def __str__(self):
         return "<Thread %s/%s title=%s>" % (
             self.list.key, self.key, self.title)
 
 class Message(object):
+    attributes = ('title', 'created_at', 'updated_at')
 
     def __init__(self, thread, key, **attrs):
         self.key = key and _uuid(key) or None
         self.thread = _thread(thread)
-        self.title = attrs.setdefault('title', None)
-        self.created_at = attrs.setdefault('created_at', None)
-        self.updated_at = attrs.setdefault('updated_at', None)
         self.list = self.thread.list
+        for key in self.__class__.attributes:
+            setattr(self, key, attrs.setdefault(key, None))
 
     def __str__(self):
         return "<Message %s title=%s>" % (self.key, self.title)

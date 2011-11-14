@@ -21,6 +21,7 @@ class Schema(object):
         self.create_lists_cf()
         self.create_threads_cf()
         self.create_msgs_cf()
+        self.create_list_threads_cf()
         self.create_list_msgs_cf()
         self.create_thread_msgs_cf()
 
@@ -37,7 +38,8 @@ class Schema(object):
         self.sys.create_column_family(self.keyspace, 'threads',
             key_validation_class=UTF8_TYPE,
             comparator_type=UTF8_TYPE)
-        self.alter_columns('threads', list_key=UTF8_TYPE, title=UTF8_TYPE)
+        self.alter_columns('threads', list_key=UTF8_TYPE, title=UTF8_TYPE,
+            message_updated_at=DATE_TYPE)
 
     def create_msgs_cf(self):
         self.sys.create_column_family(self.keyspace, 'messages',
@@ -47,6 +49,12 @@ class Schema(object):
             list_key=UTF8_TYPE, thread_key=UTF8_TYPE,
             title=UTF8_TYPE,
             created_at=DATE_TYPE, updated_at=DATE_TYPE)
+
+    def create_list_threads_cf(self):
+        self.sys.create_column_family(self.keyspace, 'list_threads',
+            key_validation_class=UTF8_TYPE,
+            comparator_type=CompositeType(
+                DateType(reversed=True),UTF8_TYPE))
 
     def create_list_msgs_cf(self):
         self.sys.create_column_family(self.keyspace, 'list_messages',
