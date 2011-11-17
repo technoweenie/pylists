@@ -2,6 +2,13 @@ import pycassa
 from pycassa.types import *
 from pycassa.system_manager import *
 
+# Completely destroys and recreates the sample keyspace for this app.
+def setup(keyspace):
+    schema = Schema(keyspace)
+    schema.create_keyspace()
+    schema.create_column_families()
+    schema.close()
+
 class Schema(object):
 
     def __init__(self, keyspace, **kwargs):
