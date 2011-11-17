@@ -313,8 +313,10 @@ def get_unique_msg_keys(column_fam, key, filter_comparator=None):
     """Gets the range of Message keys for the given Thread.  Cleanup any multiple
     Message IDs with old timestamps.
     
-    column_fam - The ColumnFamily that is being queried.
-    key        - The String row key.
+    column_fam        - The ColumnFamily that is being queried.
+    key               - The String row key.
+    filter_comparator - Function applied to IDs before being returned in the
+                        unique List of keys.  Default: str().
     
     Returns a List of String Message keys.
     """
@@ -327,7 +329,7 @@ def get_unique_msg_keys(column_fam, key, filter_comparator=None):
 
     return keys
 
-def filter_dupes(entries, id_comparator = None):
+def filter_dupes(entries, id_comparator=None):
     """Partitions the list of entries into two lists: one containing uniques, and
     one containing the duplicates.
     
@@ -336,8 +338,10 @@ def filter_dupes(entries, id_comparator = None):
       keys  # => [UUID().bytes, UUID().bytes]
       dupes # => [(datetime(...), UUID()), (datetime(...), UUID())]
     
-    entries - A List of indexed Messages represented as Tuples, each containing
-              a DateTime timestmap and a UUID Message key.
+    entries       - A List of indexed Messages represented as Tuples, each
+                    containing a DateTime timestmap and a UUID Message key.
+    id_comparator - Function applied to IDs before being returned in the List
+                    of keys.  Default: str()
     
     Returns a Tuple of a List of String UUID byte Message keys and a List of
     indexed Message Tuples.
